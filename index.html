@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Solar System Simulation - Premium Interactive Demo</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Explore an interactive 3D Solar System simulation built with Three.js. Features realistic relative orbit speeds, procedural planet styling, comet trails, asteroid belt, and educational stats.">
+  <meta name="keywords" content="Solar System, 3D Simulation, Three.js, WebGL, Kepler's Laws, Astronomy Education, Interactive Physics">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Three.js & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <!-- WebGL Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Loading Screen -->
+  <div id="loader">
+    <div class="loader-spinner"></div>
+    <h2>Generating Solar System...</h2>
+    <p>Creating high-resolution procedural textures</p>
+  </div>
+
+  <!-- Floating Planet Info Card (2D Projective Overlay) -->
+  <div id="planet-card" class="glass-panel hidden">
+    <button class="close-btn" id="close-card-btn">&times;</button>
+    <h3 id="card-name" class="planet-accent">Earth</h3>
+    <div class="card-section">
+      <div class="card-row"><strong>Surface:</strong> <span id="card-surface">-</span></div>
+      <div class="card-row"><strong>Moons:</strong> <span id="card-moons">-</span></div>
+      <div class="card-row"><strong>Fact:</strong> <span id="card-fact">-</span></div>
+    </div>
+    <div class="card-section info-mode-only">
+      <div class="card-row"><strong>Orbital Period:</strong> <span id="card-period">-</span></div>
+      <div class="card-row"><strong>Diameter:</strong> <span id="card-diameter">-</span></div>
+    </div>
+  </div>
+
+  <!-- Educational Mode Bottom Banner -->
+  <div id="education-banner" class="glass-panel">
+    <div class="banner-icon"><i data-lucide="info"></i></div>
+    <div class="banner-content">
+      <span class="banner-title">Education Mode</span>
+      <p id="banner-text">Education Mode ON: default speed is realistic and the zoom range is widened so Neptune can fit in the full system view.</p>
+    </div>
+  </div>
+
+  <!-- Sidebar UI Control Panel -->
+  <aside id="sidebar" class="glass-panel">
+    <div class="sidebar-header">
+      <div class="title-logo">
+        <i data-lucide="orbit" class="logo-icon"></i>
+        <div>
+          <h1>3D Solar System</h1>
+          <p class="subtitle">Premium Interactive Demo</p>
+        </div>
+      </div>
+      <button id="toggle-sidebar-btn" class="glass-btn mobile-only">
+        <i data-lucide="chevron-right"></i>
+      </button>
+    </div>
+
+    <div class="sidebar-scroll">
+      <!-- Section: Simulation Status -->
+      <section class="panel-section">
+        <h2><i data-lucide="activity"></i> Simulation</h2>
+        <div class="status-grid">
+          <div class="status-item">
+            <span class="status-label">Status</span>
+            <span id="status-val" class="status-value running">Running</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Speed</span>
+            <span id="speed-val" class="status-value">0.25x</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Camera</span>
+            <span id="camera-val" class="status-value">Angled</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Selected</span>
+            <span id="selected-val" class="status-value">None</span>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <button id="play-pause-btn" class="control-btn primary-btn" title="Toggle simulation run/pause (SPACE)">
+            <i data-lucide="pause"></i> <span id="play-pause-text">Pause</span>
+          </button>
+          <button id="reset-btn" class="control-btn secondary-btn" title="Reset view and parameters (R)">
+            <i data-lucide="rotate-ccw"></i> Reset
+          </button>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <label for="speed-slider">Simulation Speed</label>
+            <span id="speed-slider-val">0.25x</span>
+          </div>
+          <input type="range" id="speed-slider" min="0" max="2.0" step="0.05" value="0.25">
+          <div class="slider-ticks">
+            <span>Pause</span>
+            <span>Realistic (0.25x)</span>
+            <span>Fast (2.0x)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Camera Presets -->
+      <section class="panel-section">
+        <h2><i data-lucide="camera"></i> Camera Presets</h2>
+        <div class="button-grid">
+          <button class="preset-btn active" data-preset="0" title="Orbiting 3D view (1)">Angled</button>
+          <button class="preset-btn" data-preset="1" title="Top-down perspective (2)">Top View</button>
+          <button class="preset-btn" data-preset="2" title="Edge-on system view (3)">Side View</button>
+          <button class="preset-btn" id="track-btn" data-preset="3" title="Follow selected planet (4)" disabled>Track Body</button>
+        </div>
+      </section>
+
+      <!-- Section: Toggles & Features -->
+      <section class="panel-section">
+        <h2><i data-lucide="sliders"></i> View Settings</h2>
+        <div class="toggle-list">
+          <div class="toggle-item">
+            <div class="toggle-info">
+              <span>Show Labels</span>
+              <p>Display celestial body labels (L)</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-labels" checked>
+              <span class="slider-switch"></span>
+            </label>
+          </div>
+          <div class="toggle-item">
+            <div class="toggle-info">
+              <span>Show Orbits</span>
+              <p>Display planet orbit path lines (O)</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-orbits" checked>
+              <span class="slider-switch"></span>
+            </label>
+          </div>
+          <div class="toggle-item">
+            <div class="toggle-info">
+              <span>Asteroid Belt</span>
+              <p>Show orbiting rock debris (B)</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-asteroids" checked>
+              <span class="slider-switch"></span>
+            </label>
+          </div>
+          <div class="toggle-item">
+            <div class="toggle-info">
+              <span>Education Mode</span>
+              <p>Enable details and wider view (I)</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-education" checked>
+              <span class="slider-switch"></span>
+            </label>
+          </div>
+          <div class="toggle-item">
+            <div class="toggle-info">
+              <span>Cinematic Mode</span>
+              <p>Automated slow sweep & zoom (C)</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-cinematic">
+              <span class="slider-switch"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Control Tips -->
+      <section class="panel-section help-section">
+        <h2><i data-lucide="help-circle"></i> Quick Guide</h2>
+        <ul class="help-list">
+          <li><strong>Left Click + Drag:</strong> Rotate Orbit camera</li>
+          <li><strong>Right Click + Drag:</strong> Pan camera</li>
+          <li><strong>Scroll Wheel:</strong> Zoom in/out</li>
+          <li><strong>Click Planet:</strong> Select body and display information</li>
+          <li><strong>Keyboard Hotkeys:</strong> Listed in control panel details</li>
+        </ul>
+      </section>
+    </div>
+  </aside>
+
+  <!-- Sidebar Toggle Button (when collapsed) -->
+  <button id="sidebar-open-btn" class="glass-btn hidden">
+    <i data-lucide="menu"></i>
+  </button>
+
+  <!-- Javascript Modules -->
+  <script src="textures.js"></script>
+  <script src="simulation.js"></script>
+</body>
+</html>
